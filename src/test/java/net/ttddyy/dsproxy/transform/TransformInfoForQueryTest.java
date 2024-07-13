@@ -16,6 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -52,7 +53,6 @@ public class TransformInfoForQueryTest {
 
     @Test
     public void testQueryTransformerInStatement() throws Throwable {
-
         Statement stmt = mock(Statement.class);
         QueryTransformer queryTransformer = getMockQueryTransformer(1);
         ProxyConfig proxyConfig = ProxyConfig.Builder.create().queryTransformer(queryTransformer).build();
@@ -63,21 +63,14 @@ public class TransformInfoForQueryTest {
         Object[] args = new Object[]{"my-query"};
         handler.invoke(null, method, args);
 
-        verify(queryTransformer).transformQuery(isA(TransformInfo.class));
-
-        assertThat(transformInfo).isNotNull();
-        assertThat(transformInfo.getClazz()).isEqualTo(Statement.class);
-        assertThat(transformInfo.getQuery()).isEqualTo("my-query");
-        assertThat(transformInfo.getDataSourceName()).isEqualTo("my-ds");
-        assertThat(transformInfo.isBatch()).isFalse();
-        assertThat(transformInfo.getCount()).isEqualTo(0);
-
+        verify(queryTransformer).transformQuery(argThat(transformInfo -> {
+            validateTransformInfo(transformInfo, Statement.class, "my-query", false, 0);
+            return true;
+        }));
     }
-
 
     @Test
     public void testQueryTransformerBatchInStatement() throws Throwable {
-
         Statement stmt = mock(Statement.class);
         QueryTransformer queryTransformer = getMockQueryTransformer(2);
         ProxyConfig proxyConfig = ProxyConfig.Builder.create().queryTransformer(queryTransformer).build();
@@ -86,33 +79,23 @@ public class TransformInfoForQueryTest {
 
         Method method = Statement.class.getMethod("addBatch", String.class);
 
-        // first batch
+        // First batch
         handler.invoke(null, method, new Object[]{"my-query-1"});
+        verify(queryTransformer).transformQuery(argThat(transformInfo -> {
+            validateTransformInfo(transformInfo, Statement.class, "my-query-1", true, 0);
+            return true;
+        }));
 
-        verify(queryTransformer).transformQuery(isA(TransformInfo.class));
-        assertThat(transformInfo).isNotNull();
-        assertThat(transformInfo.getClazz()).isEqualTo(Statement.class);
-        assertThat(transformInfo.getQuery()).isEqualTo("my-query-1");
-        assertThat(transformInfo.getDataSourceName()).isEqualTo("my-ds");
-        assertThat(transformInfo.isBatch()).isTrue();
-        assertThat(transformInfo.getCount()).isEqualTo(0);
-
-        // second batch
+        // Second batch
         handler.invoke(null, method, new Object[]{"my-query-2"});
-
-        verify(queryTransformer, times(2)).transformQuery(isA(TransformInfo.class));
-        assertThat(transformInfo).isNotNull();
-        assertThat(transformInfo.getClazz()).isEqualTo(Statement.class);
-        assertThat(transformInfo.getQuery()).isEqualTo("my-query-2");
-        assertThat(transformInfo.getDataSourceName()).isEqualTo("my-ds");
-        assertThat(transformInfo.isBatch()).isTrue();
-        assertThat(transformInfo.getCount()).isEqualTo(1);
-
+        verify(queryTransformer, times(2)).transformQuery(argThat(transformInfo -> {
+            validateTransformInfo(transformInfo, Statement.class, "my-query-2", true, 1);
+            return true;
+        }));
     }
 
     @Test
     public void testQueryTransformerInConnectionHandlerForPrepareStatement() throws Throwable {
-
         Connection conn = mock(Connection.class);
         QueryTransformer queryTransformer = getMockQueryTransformer(1);
         ProxyConfig proxyConfig = ProxyConfig.Builder.create().queryTransformer(queryTransformer).build();
@@ -120,22 +103,16 @@ public class TransformInfoForQueryTest {
         ConnectionInvocationHandler handler = new ConnectionInvocationHandler(conn, getConnectionInfo(), proxyConfig);
 
         Method method = Connection.class.getMethod("prepareStatement", String.class);
-
         handler.invoke(null, method, new Object[]{"my-query"});
 
-        verify(queryTransformer).transformQuery(isA(TransformInfo.class));
-        assertThat(transformInfo).isNotNull();
-        assertThat(transformInfo.getClazz()).isEqualTo(PreparedStatement.class);
-        assertThat(transformInfo.getQuery()).isEqualTo("my-query");
-        assertThat(transformInfo.getDataSourceName()).isEqualTo("my-ds");
-        assertThat(transformInfo.isBatch()).isFalse();
-        assertThat(transformInfo.getCount()).isEqualTo(0);
-
+        verify(queryTransformer).transformQuery(argThat(transformInfo -> {
+            validateTransformInfo(transformInfo, PreparedStatement.class, "my-query", false, 0);
+            return true;
+        }));
     }
 
     @Test
     public void testQueryTransformerInConnectionHandlerForPrepareCall() throws Throwable {
-
         Connection conn = mock(Connection.class);
         QueryTransformer queryTransformer = getMockQueryTransformer(1);
         ProxyConfig proxyConfig = ProxyConfig.Builder.create().queryTransformer(queryTransformer).build();
@@ -143,18 +120,23 @@ public class TransformInfoForQueryTest {
         ConnectionInvocationHandler handler = new ConnectionInvocationHandler(conn, getConnectionInfo(), proxyConfig);
 
         Method method = Connection.class.getMethod("prepareCall", String.class);
-
         handler.invoke(null, method, new Object[]{"my-query"});
 
-        verify(queryTransformer).transformQuery(isA(TransformInfo.class));
-        assertThat(transformInfo).isNotNull();
-        assertThat(transformInfo.getClazz()).isEqualTo(CallableStatement.class);
-        assertThat(transformInfo.getQuery()).isEqualTo("my-query");
-        assertThat(transformInfo.getDataSourceName()).isEqualTo("my-ds");
-        assertThat(transformInfo.isBatch()).isFalse();
-        assertThat(transformInfo.getCount()).isEqualTo(0);
-
+        verify(queryTransformer).transformQuery(argThat(transformInfo -> {
+            validateTransformInfo(transformInfo, CallableStatement.class, "my-query", false, 0);
+            return true;
+        }));
     }
+
+    private void validateTransformInfo(TransformInfo transformInfo, Class<?> expectedClass, String expectedQuery, boolean isBatch, int expectedCount) {
+        assertThat(transformInfo).isNotNull();
+        assertThat(transformInfo.getClazz()).isEqualTo(expectedClass);
+        assertThat(transformInfo.getQuery()).isEqualTo(expectedQuery);
+        assertThat(transformInfo.getDataSourceName()).isEqualTo("my-ds");
+        assertThat(transformInfo.isBatch()).isEqualTo(isBatch);
+        assertThat(transformInfo.getCount()).isEqualTo(expectedCount);
+    }
+
 
     private ConnectionInfo getConnectionInfo() {
         ConnectionInfo connectionInfo = new ConnectionInfo();
