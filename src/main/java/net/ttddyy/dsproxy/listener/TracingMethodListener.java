@@ -4,6 +4,7 @@ import net.ttddyy.dsproxy.ConnectionInfo;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicLong;
+import java.lang.reflect.Method;
 
 /**
  * Log all JDBC API interaction.
@@ -80,7 +81,8 @@ public class TracingMethodListener implements MethodExecutionListener {
         long seq = this.sequenceNumber.getAndIncrement();
         String args = getArguments(executionContext.getMethodArgs());
 
-        String message = constructMessage(seq, thrown, execTime, connectionId, targetClass, method, args);
+        MessageParameters params = new MessageParameters(seq, thrown, execTime, connectionId, targetClass, method, args);
+        String message = constructMessage(params);
         logMessage(message);
 
     }
@@ -196,46 +198,49 @@ public class TracingMethodListener implements MethodExecutionListener {
     /**
      * Construct a message to log.
      *
-     * @param seq          sequence number
-     * @param thrown       thrown exception
-     * @param execTime     time took to perform the method
-     * @param connectionId connection id
-     * @param targetClass  invoked class
-     * @param method       invoked method
-     * @param args         method arguments(parameters)
+     * @param params an instance of {@link MessageParameters} containing:
+     *               <ul>
+     *                   <li>seq: sequence number</li>
+     *                   <li>thrown: thrown exception</li>
+     *                   <li>execTime: time took to perform the method</li>
+     *                   <li>connectionId: connection id</li>
+     *                   <li>targetClass: invoked class</li>
+     *                   <li>method: invoked method</li>
+     *                   <li>args: method arguments (parameters)</li>
+     *               </ul>
      * @return message to log
      */
-    protected String constructMessage(long seq, Throwable thrown, long execTime,
-                                      String connectionId, Class<?> targetClass, Method method, String args) {
+
+    protected String constructMessage(MessageParameters params) {
         StringBuilder sb = new StringBuilder();
         sb.append("[");
-        sb.append(seq);
+        sb.append(params.getSeq());
         sb.append("]");
 
         sb.append("[");
-        sb.append(thrown == null ? "success" : "fail");
+        sb.append(params.getThrown() == null ? "success" : "fail");
         sb.append("]");
 
         sb.append("[");
-        sb.append(execTime);
+        sb.append(params.getExecTime());
         sb.append("ms]");
 
         sb.append("[conn=");
-        sb.append(connectionId);
+        sb.append(params.getConnectionId());
         sb.append("]");
 
-        if (thrown != null) {
+        if (params.getThrown() != null) {
             sb.append("[error=");
-            sb.append(thrown.getMessage());
+            sb.append(params.getThrown().getMessage());
             sb.append("]");
         }
 
         sb.append(" ");
-        sb.append(targetClass.getSimpleName());
+        sb.append(params.getTargetClass().getSimpleName());
         sb.append("#");
-        sb.append(method.getName());
+        sb.append(params.getMethod().getName());
         sb.append("(");
-        sb.append(args);
+        sb.append(params.getArgs());
         sb.append(")");
 
         return sb.toString();

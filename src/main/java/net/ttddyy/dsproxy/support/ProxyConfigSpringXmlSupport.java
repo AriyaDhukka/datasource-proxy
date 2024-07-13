@@ -62,31 +62,65 @@ public class ProxyConfigSpringXmlSupport {
 
     public ProxyConfig create() {
         ProxyConfig.Builder builder = ProxyConfig.Builder.create();
+
+        setDataSourceName(builder);
+        setQueryListener(builder);
+        setQueryTransformer(builder);
+        setParameterTransformer(builder);
+        setJdbcProxyFactory(builder);
+        setResultSetProxyLogicFactory(builder);
+        setConnectionIdManager(builder);
+        setMethodListener(builder);
+
+        return builder.build();
+    }
+
+    private void setDataSourceName(ProxyConfig.Builder builder) {
         if (this.dataSourceName != null) {
             builder.dataSourceName(this.dataSourceName);
         }
+    }
+
+    private void setQueryListener(ProxyConfig.Builder builder) {
         if (this.queryListener != null) {
             builder.queryListener(this.queryListener);
         }
+    }
+
+    private void setQueryTransformer(ProxyConfig.Builder builder) {
         if (this.queryTransformer != null) {
             builder.queryTransformer(this.queryTransformer);
         }
+    }
+
+    private void setParameterTransformer(ProxyConfig.Builder builder) {
         if (this.parameterTransformer != null) {
             builder.parameterTransformer(this.parameterTransformer);
         }
+    }
+
+    private void setJdbcProxyFactory(ProxyConfig.Builder builder) {
         if (this.jdbcProxyFactory != null) {
             builder.jdbcProxyFactory(this.jdbcProxyFactory);
         }
+    }
+
+    private void setResultSetProxyLogicFactory(ProxyConfig.Builder builder) {
         if (this.resultSetProxyLogicFactory != null) {
             builder.resultSetProxyLogicFactory(this.resultSetProxyLogicFactory);
         }
+    }
+
+    private void setConnectionIdManager(ProxyConfig.Builder builder) {
         if (this.connectionIdManager != null) {
             builder.connectionIdManager(this.connectionIdManager);
         }
+    }
+
+    private void setMethodListener(ProxyConfig.Builder builder) {
         if (this.methodListener != null) {
             builder.methodListener(this.methodListener);
         }
-        return builder.build();
     }
 
     public void setDataSourceName(String dataSourceName) {

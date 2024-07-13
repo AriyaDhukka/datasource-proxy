@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Hold query metrics.
  *
- * @author Tadaya Tsuyukubo
+ * author Tadaya Tsuyukubo
  */
 public class QueryCount {
 

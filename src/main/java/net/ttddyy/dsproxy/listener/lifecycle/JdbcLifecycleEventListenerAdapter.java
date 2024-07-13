@@ -156,7 +156,6 @@ public class JdbcLifecycleEventListenerAdapter implements JdbcLifecycleEventList
 
     }
 
-    @Override
     public void beforeRegisterOutParameter(MethodExecutionContext executionContext) {
 
     }
@@ -291,7 +290,6 @@ public class JdbcLifecycleEventListenerAdapter implements JdbcLifecycleEventList
 
     }
 
-    @Override
     public void afterRegisterOutParameter(MethodExecutionContext executionContext) {
 
     }

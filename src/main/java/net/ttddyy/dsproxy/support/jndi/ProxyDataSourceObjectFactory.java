@@ -63,7 +63,6 @@ public class ProxyDataSourceObjectFactory implements ObjectFactory {
 
     @Override
     public Object getObjectInstance(Object obj, Name name, Context nameCtx, Hashtable<?, ?> environment) throws Exception {
-
         if (obj == null || !(obj instanceof Reference)) {
             return null;
         }
@@ -78,7 +77,7 @@ public class ProxyDataSourceObjectFactory implements ObjectFactory {
         String queryTransformer = getContentFromReference(reference, "queryTransformer");
         String parameterTransformer = getContentFromReference(reference, "parameterTransformer");
 
-        // retrieve datasource from JNDI
+        // Retrieve datasource from JNDI
         Object dataSourceResource = new InitialContext().lookup(dataSourceJndiName);
         if (dataSourceResource == null) {
             throw new Exception(String.format("%s is not available.", dataSourceJndiName));
@@ -87,7 +86,7 @@ public class ProxyDataSourceObjectFactory implements ObjectFactory {
         }
         DataSource dataSource = (DataSource) dataSourceResource;
 
-        // builder
+        // Builder
         ProxyDataSourceBuilder builder = ProxyDataSourceBuilder.create(dataSource);
 
         if (proxyDataSourceName != null) {
@@ -96,50 +95,7 @@ public class ProxyDataSourceObjectFactory implements ObjectFactory {
 
         if (listenerNames != null) {
             for (String listenerName : getListenerNames(listenerNames)) {
-                if ("commons".equalsIgnoreCase(listenerName)) {
-                    boolean hasLogLevel = logLevel != null;
-                    boolean hasLoggerName = loggerName != null;
-                    if (hasLogLevel && hasLoggerName) {
-                        builder.logQueryByCommons(CommonsLogLevel.valueOf(logLevel.toUpperCase()), loggerName);
-                    } else if (hasLogLevel) {
-                        builder.logQueryByCommons(CommonsLogLevel.valueOf(logLevel.toUpperCase()));
-                    } else if (hasLoggerName) {
-                        builder.logQueryByCommons(loggerName);
-                    } else {
-                        builder.logQueryByCommons();
-                    }
-                } else if ("slf4j".equalsIgnoreCase(listenerName)) {
-                    boolean hasLogLevel = logLevel != null;
-                    boolean hasLogName = loggerName != null;
-                    if (hasLogLevel && hasLogName) {
-                        builder.logQueryBySlf4j(SLF4JLogLevel.valueOf(logLevel.toUpperCase()), loggerName);
-                    } else if (hasLogLevel) {
-                        builder.logQueryBySlf4j(SLF4JLogLevel.valueOf(logLevel.toUpperCase()));
-                    } else if (hasLogName) {
-                        builder.logQueryBySlf4j(loggerName);
-                    } else {
-                        builder.logQueryBySlf4j();
-                    }
-                } else if ("log4j".equalsIgnoreCase(listenerName)) {
-                    boolean hasLogLevel = logLevel != null;
-                    boolean hasLogName = loggerName != null;
-                    if (hasLogLevel && hasLogName) {
-                        builder.logQueryByLog4j(Log4jLogLevel.valueOf(logLevel.toUpperCase()), loggerName);
-                    } else if (hasLogLevel) {
-                        builder.logQueryByLog4j(Log4jLogLevel.valueOf(logLevel.toUpperCase()));
-                    } else if (hasLogName) {
-                        builder.logQueryByLog4j(loggerName);
-                    } else {
-                        builder.logQueryByLog4j();
-                    }
-                } else if ("sysout".equalsIgnoreCase(listenerName)) {
-                    builder.logQueryToSysOut();
-                } else if ("count".equalsIgnoreCase(listenerName)) {
-                    builder.countQuery();
-                } else {
-                    QueryExecutionListener listener = createNewInstance(QueryExecutionListener.class, listenerName);
-                    builder.listener(listener);
-                }
+                configureListener(builder, listenerName, logLevel, loggerName);
             }
 
             if (format != null && "json".equals(format.toLowerCase())) {
@@ -148,15 +104,108 @@ public class ProxyDataSourceObjectFactory implements ObjectFactory {
         }
 
         if (queryTransformer != null) {
-            QueryTransformer transformer = createNewInstance(QueryTransformer.class, queryTransformer);
-            builder.queryTransformer(transformer);
+            try {
+                QueryTransformer transformer = createNewInstance(QueryTransformer.class, queryTransformer);
+                builder.queryTransformer(transformer);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create query transformer: " + queryTransformer, e);
+            }
         }
+
         if (parameterTransformer != null) {
-            ParameterTransformer transformer = createNewInstance(ParameterTransformer.class, parameterTransformer);
-            builder.parameterTransformer(transformer);
+            try {
+                ParameterTransformer transformer = createNewInstance(ParameterTransformer.class, parameterTransformer);
+                builder.parameterTransformer(transformer);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create parameter transformer: " + parameterTransformer, e);
+            }
         }
 
         return builder.build();
+    }
+
+    private void configureListener(ProxyDataSourceBuilder builder, String listenerName, String logLevel, String loggerName) {
+        try {
+            switch (listenerName.toLowerCase()) {
+                case "commons":
+                    configureCommonsListener(builder, logLevel, loggerName);
+                    break;
+                case "slf4j":
+                    configureSlf4jListener(builder, logLevel, loggerName);
+                    break;
+                case "log4j":
+                    configureLog4jListener(builder, logLevel, loggerName);
+                    break;
+                case "sysout":
+                    builder.logQueryToSysOut();
+                    break;
+                case "count":
+                    builder.countQuery();
+                    break;
+                default:
+                    addCustomListener(builder, listenerName);
+                    break;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to configure listener: " + listenerName, e);
+        }
+    }
+
+    private void addCustomListener(ProxyDataSourceBuilder builder, String listenerName) {
+        try {
+            QueryExecutionListener listener = createNewInstance(QueryExecutionListener.class, listenerName);
+            builder.listener(listener);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create listener: " + listenerName, e);
+        }
+    }
+
+    private void configureCommonsListener(ProxyDataSourceBuilder builder, String logLevel, String loggerName) {
+        try {
+            if (logLevel != null && loggerName != null) {
+                builder.logQueryByCommons(CommonsLogLevel.valueOf(logLevel.toUpperCase()), loggerName);
+            } else if (logLevel != null) {
+                builder.logQueryByCommons(CommonsLogLevel.valueOf(logLevel.toUpperCase()));
+            } else if (loggerName != null) {
+                builder.logQueryByCommons(loggerName);
+            } else {
+                builder.logQueryByCommons();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to configure commons listener", e);
+        }
+    }
+
+    private void configureSlf4jListener(ProxyDataSourceBuilder builder, String logLevel, String loggerName) {
+        try {
+            if (logLevel != null && loggerName != null) {
+                builder.logQueryBySlf4j(SLF4JLogLevel.valueOf(logLevel.toUpperCase()), loggerName);
+            } else if (logLevel != null) {
+                builder.logQueryBySlf4j(SLF4JLogLevel.valueOf(logLevel.toUpperCase()));
+            } else if (loggerName != null) {
+                builder.logQueryBySlf4j(loggerName);
+            } else {
+                builder.logQueryBySlf4j();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to configure SLF4J listener", e);
+        }
+    }
+
+    private void configureLog4jListener(ProxyDataSourceBuilder builder, String logLevel, String loggerName) {
+        try {
+            if (logLevel != null && loggerName != null) {
+                builder.logQueryByLog4j(Log4jLogLevel.valueOf(logLevel.toUpperCase()), loggerName);
+            } else if (logLevel != null) {
+                builder.logQueryByLog4j(Log4jLogLevel.valueOf(logLevel.toUpperCase()));
+            } else if (loggerName != null) {
+                builder.logQueryByLog4j(loggerName);
+            } else {
+                builder.logQueryByLog4j();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to configure Log4j listener", e);
+        }
     }
 
     @SuppressWarnings("unchecked")

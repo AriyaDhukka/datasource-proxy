@@ -167,8 +167,8 @@ public class ProxyDataSourceBuilder {
     private ResultSetProxyLogicFactory resultSetProxyLogicFactory;
 
     private boolean autoRetrieveGeneratedKeys;
-    private Boolean retrieveGeneratedKeysForBatchStatement;
-    private Boolean retrieveGeneratedKeysForBatchPreparedOrCallable;
+    private Boolean batchKeysForStmt;
+    private Boolean batchKeysForPrepOrCall;
     private boolean autoCloseGeneratedKeys;
     private ResultSetProxyLogicFactory generatedKeysProxyLogicFactory;
 
@@ -976,10 +976,11 @@ public class ProxyDataSourceBuilder {
      * @since 1.4.6
      */
     public ProxyDataSourceBuilder retrieveGeneratedKeysForBatch(boolean forStatement, boolean forPreparedOrCallable) {
-        this.retrieveGeneratedKeysForBatchStatement = forStatement;
-        this.retrieveGeneratedKeysForBatchPreparedOrCallable = forPreparedOrCallable;
+        this.batchKeysForStmt = forStatement;
+        this.batchKeysForPrepOrCall = forPreparedOrCallable;
         return this;
     }
+
 
 
     /**
@@ -1248,11 +1249,11 @@ public class ProxyDataSourceBuilder {
 
         // generated keys
         proxyConfigBuilder.autoRetrieveGeneratedKeys(this.autoRetrieveGeneratedKeys);
-        if (this.retrieveGeneratedKeysForBatchStatement != null) {
-            proxyConfigBuilder.retrieveGeneratedKeysForBatchStatement(this.retrieveGeneratedKeysForBatchStatement);
+        if (this.batchKeysForStmt != null) {
+            proxyConfigBuilder.retrieveGeneratedKeysForBatchStatement(this.batchKeysForStmt);
         }
-        if (this.retrieveGeneratedKeysForBatchPreparedOrCallable != null) {
-            proxyConfigBuilder.retrieveGeneratedKeysForBatchPreparedOrCallable(this.retrieveGeneratedKeysForBatchPreparedOrCallable);
+        if (this.batchKeysForPrepOrCall != null) {
+            proxyConfigBuilder.retrieveGeneratedKeysForBatchPreparedOrCallable(this.batchKeysForPrepOrCall);
         }
         proxyConfigBuilder.autoCloseGeneratedKeys(this.autoCloseGeneratedKeys);
         // this can be null if creation of generated keys proxy is disabled
